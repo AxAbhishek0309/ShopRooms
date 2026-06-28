@@ -13,13 +13,15 @@ export type EventType =
 
 export type RoomStatus = "active" | "planning" | "completed" | "archived";
 
+export type MemberRole = "owner" | "admin" | "editor" | "viewer";
+
 export interface User {
   id: string;
   name: string;
   email: string;
   avatarUrl?: string;
   initials: string;
-  role?: "owner" | "editor" | "viewer";
+  role?: MemberRole;
 }
 
 export interface Room {
@@ -38,6 +40,76 @@ export interface Room {
   updatedAt: string;
   eventDate?: string;
   pinned?: boolean;
+}
+
+export type ProductCategory =
+  | "Electronics"
+  | "Kitchen"
+  | "Furniture"
+  | "Bedroom"
+  | "Bathroom"
+  | "Decor"
+  | "Festival"
+  | "Wedding"
+  | "Office"
+  | "Miscellaneous";
+
+export type Priority = "low" | "medium" | "high";
+
+export type ProductStatus = "pending" | "reserved" | "purchased";
+
+export interface Product {
+  id: string;
+  roomId: string;
+  brand: string;
+  name: string;
+  category: ProductCategory;
+  emoji: string;
+  gradient: [string, string];
+  price: number;
+  mrp: number;
+  rating: number;
+  ratingCount: number;
+  deliveryDays: number;
+  priority: Priority;
+  status: ProductStatus;
+  assignedToId?: string;
+  reservedById?: string;
+  purchasedById?: string;
+  commentsCount: number;
+  addedById: string;
+  createdAt: string;
+  notes?: string;
+}
+
+export type PresenceStatus = "online" | "idle" | "offline";
+
+export interface Presence {
+  userId: string;
+  status: PresenceStatus;
+  activity?: string;
+  typingIn?: ProductCategory;
+  viewingCategory?: ProductCategory;
+  lastSeen?: string;
+}
+
+export type ActivityKind =
+  | "added"
+  | "reserved"
+  | "purchased"
+  | "assigned"
+  | "budget"
+  | "joined"
+  | "commented";
+
+export interface ActivityEvent {
+  id: string;
+  roomId: string;
+  userId: string;
+  kind: ActivityKind;
+  target?: string;
+  meta?: string;
+  createdAt: string;
 }
 
 export interface ShoppingItem {
