@@ -191,7 +191,7 @@ export const GridScan: React.FC<GridScanProps> = ({
   const composerRef = useRef<EffectComposer | null>(null);
   const bloomRef = useRef<BloomEffect | null>(null);
   const chromaRef = useRef<ChromaticAberrationEffect | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const rafRef = useRef<number | { cancel: () => void } | null>(null);
   const [modelsReady, setModelsReady] = useState(false);
   const [uiFaceActive, setUiFaceActive] = useState(false);
   const lookTarget = useRef(new THREE.Vector2(0, 0));
@@ -281,101 +281,114 @@ export const GridScan: React.FC<GridScanProps> = ({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    rendererRef.current = renderer;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.NoToneMapping;
-    renderer.autoClear = false;
-    renderer.setClearColor(0x000000, 0);
-    container.appendChild(renderer.domElement);
 
-    const uniforms = {
-      iResolution: { value: new THREE.Vector3(container.clientWidth, container.clientHeight, renderer.getPixelRatio()) },
-      iTime: { value: 0 },
-      uSkew: { value: new THREE.Vector2(0, 0) },
-      uTilt: { value: 0 },
-      uYaw: { value: 0 },
-      uLineThickness: { value: lineThickness },
-      uLinesColor: { value: srgbColor(linesColor) },
-      uScanColor: { value: srgbColor(scanColor) },
-      uGridScale: { value: gridScale },
-      uLineStyle: { value: lineStyle === 'dashed' ? 1 : lineStyle === 'dotted' ? 2 : 0 },
-      uLineJitter: { value: Math.max(0, Math.min(1, lineJitter || 0)) },
-      uScanOpacity: { value: scanOpacity },
-      uNoise: { value: noiseIntensity },
-      uBloomOpacity: { value: bloomIntensity },
-      uScanGlow: { value: scanGlow },
-      uScanSoftness: { value: scanSoftness },
-      uPhaseTaper: { value: scanPhaseTaper },
-      uScanDuration: { value: scanDuration },
-      uScanDelay: { value: scanDelay },
-      uScanDirection: { value: scanDirection === 'backward' ? 1 : scanDirection === 'pingpong' ? 2 : 0 },
-      uScanStarts: { value: new Array(MAX_SCANS).fill(0) },
-      uScanCount: { value: 0 },
+    let initialized = false;
+    let rafId: number | null = null;
+
+    const init = () => {
+      if (initialized) return;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      if (w === 0 || h === 0) return;
+      initialized = true;
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+      rendererRef.current = renderer;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(w, h);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.autoClear = false;
+      renderer.setClearColor(0x000000, 0);
+      container.appendChild(renderer.domElement);
+
+      const uniforms = {
+        iResolution: { value: new THREE.Vector3(w, h, renderer.getPixelRatio()) },
+        iTime: { value: 0 },
+        uSkew: { value: new THREE.Vector2(0, 0) },
+        uTilt: { value: 0 },
+        uYaw: { value: 0 },
+        uLineThickness: { value: lineThickness },
+        uLinesColor: { value: srgbColor(linesColor) },
+        uScanColor: { value: srgbColor(scanColor) },
+        uGridScale: { value: gridScale },
+        uLineStyle: { value: lineStyle === 'dashed' ? 1 : lineStyle === 'dotted' ? 2 : 0 },
+        uLineJitter: { value: Math.max(0, Math.min(1, lineJitter || 0)) },
+        uScanOpacity: { value: scanOpacity },
+        uNoise: { value: noiseIntensity },
+        uBloomOpacity: { value: bloomIntensity },
+        uScanGlow: { value: scanGlow },
+        uScanSoftness: { value: scanSoftness },
+        uPhaseTaper: { value: scanPhaseTaper },
+        uScanDuration: { value: scanDuration },
+        uScanDelay: { value: scanDelay },
+        uScanDirection: { value: scanDirection === 'backward' ? 1 : scanDirection === 'pingpong' ? 2 : 0 },
+        uScanStarts: { value: new Array(MAX_SCANS).fill(0) },
+        uScanCount: { value: 0 },
+      };
+
+      const material = new THREE.ShaderMaterial({ uniforms, vertexShader: vert, fragmentShader: frag, transparent: true, depthWrite: false, depthTest: false });
+      materialRef.current = material;
+      const scene = new THREE.Scene();
+      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+      scene.add(quad);
+
+      if (enablePost) {
+        const composer = new EffectComposer(renderer);
+        composerRef.current = composer;
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        const bloom = new BloomEffect({ intensity: 1.0, luminanceThreshold: bloomThreshold, luminanceSmoothing: bloomSmoothing });
+        bloom.blendMode.opacity.value = Math.max(0, bloomIntensity);
+        bloomRef.current = bloom;
+        const chroma = new ChromaticAberrationEffect({ offset: new THREE.Vector2(chromaticAberration, chromaticAberration), radialModulation: true, modulationOffset: 0.0 });
+        chromaRef.current = chroma;
+        const effectPass = new EffectPass(camera, bloom, chroma);
+        effectPass.renderToScreen = true;
+        composer.addPass(effectPass);
+      }
+
+      const onResize = () => {
+        const cw = container.clientWidth;
+        const ch = container.clientHeight;
+        renderer.setSize(cw, ch);
+        material.uniforms.iResolution.value.set(cw, ch, renderer.getPixelRatio());
+        if (composerRef.current) composerRef.current.setSize(cw, ch);
+      };
+      window.addEventListener('resize', onResize);
+
+      let last = performance.now();
+      const tick = () => {
+        const now = performance.now();
+        const dt = Math.max(0, Math.min(0.1, (now - last) / 1000));
+        last = now;
+        lookCurrent.current.copy(smoothDampVec2(lookCurrent.current, lookTarget.current, lookVel.current, smoothTime, maxSpeed, dt));
+        const tiltSm = smoothDampFloat(tiltCurrent.current, tiltTarget.current, { v: tiltVel.current }, smoothTime, maxSpeed, dt);
+        tiltCurrent.current = tiltSm.value; tiltVel.current = tiltSm.v;
+        const yawSm = smoothDampFloat(yawCurrent.current, yawTarget.current, { v: yawVel.current }, smoothTime, maxSpeed, dt);
+        yawCurrent.current = yawSm.value; yawVel.current = yawSm.v;
+        const skew = new THREE.Vector2(lookCurrent.current.x * skewScale, -lookCurrent.current.y * yBoost * skewScale);
+        material.uniforms.uSkew.value.set(skew.x, skew.y);
+        material.uniforms.uTilt.value = tiltCurrent.current * tiltScale;
+        material.uniforms.uYaw.value = THREE.MathUtils.clamp(yawCurrent.current * yawScale, -0.6, 0.6);
+        material.uniforms.iTime.value = now / 1000;
+        renderer.clear(true, true, true);
+        if (composerRef.current) { composerRef.current.render(dt); } else { renderer.render(scene, camera); }
+        rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+      rafRef.current = { cancel: () => { if (rafId) cancelAnimationFrame(rafId); window.removeEventListener('resize', onResize); material.dispose(); (quad.geometry as THREE.BufferGeometry).dispose(); if (composerRef.current) { composerRef.current.dispose(); composerRef.current = null; } renderer.dispose(); renderer.forceContextLoss(); if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement); } } as any;
     };
 
-    const material = new THREE.ShaderMaterial({ uniforms, vertexShader: vert, fragmentShader: frag, transparent: true, depthWrite: false, depthTest: false });
-    materialRef.current = material;
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
-    scene.add(quad);
-
-    let composer: EffectComposer | null = null;
-    if (enablePost) {
-      composer = new EffectComposer(renderer);
-      composerRef.current = composer;
-      const renderPass = new RenderPass(scene, camera);
-      composer.addPass(renderPass);
-      const bloom = new BloomEffect({ intensity: 1.0, luminanceThreshold: bloomThreshold, luminanceSmoothing: bloomSmoothing });
-      bloom.blendMode.opacity.value = Math.max(0, bloomIntensity);
-      bloomRef.current = bloom;
-      const chroma = new ChromaticAberrationEffect({ offset: new THREE.Vector2(chromaticAberration, chromaticAberration), radialModulation: true, modulationOffset: 0.0 });
-      chromaRef.current = chroma;
-      const effectPass = new EffectPass(camera, bloom, chroma);
-      effectPass.renderToScreen = true;
-      composer.addPass(effectPass);
-    }
-
-    const onResize = () => {
-      renderer.setSize(container.clientWidth, container.clientHeight);
-      material.uniforms.iResolution.value.set(container.clientWidth, container.clientHeight, renderer.getPixelRatio());
-      if (composerRef.current) composerRef.current.setSize(container.clientWidth, container.clientHeight);
-    };
-    window.addEventListener('resize', onResize);
-
-    let last = performance.now();
-    const tick = () => {
-      const now = performance.now();
-      const dt = Math.max(0, Math.min(0.1, (now - last) / 1000));
-      last = now;
-      lookCurrent.current.copy(smoothDampVec2(lookCurrent.current, lookTarget.current, lookVel.current, smoothTime, maxSpeed, dt));
-      const tiltSm = smoothDampFloat(tiltCurrent.current, tiltTarget.current, { v: tiltVel.current }, smoothTime, maxSpeed, dt);
-      tiltCurrent.current = tiltSm.value; tiltVel.current = tiltSm.v;
-      const yawSm = smoothDampFloat(yawCurrent.current, yawTarget.current, { v: yawVel.current }, smoothTime, maxSpeed, dt);
-      yawCurrent.current = yawSm.value; yawVel.current = yawSm.v;
-      const skew = new THREE.Vector2(lookCurrent.current.x * skewScale, -lookCurrent.current.y * yBoost * skewScale);
-      material.uniforms.uSkew.value.set(skew.x, skew.y);
-      material.uniforms.uTilt.value = tiltCurrent.current * tiltScale;
-      material.uniforms.uYaw.value = THREE.MathUtils.clamp(yawCurrent.current * yawScale, -0.6, 0.6);
-      material.uniforms.iTime.value = now / 1000;
-      renderer.clear(true, true, true);
-      if (composerRef.current) { composerRef.current.render(dt); } else { renderer.render(scene, camera); }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
+    // Try immediately, then observe for when dimensions become available
+    init();
+    const ro = new ResizeObserver(() => init());
+    ro.observe(container);
 
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      window.removeEventListener('resize', onResize);
-      material.dispose();
-      (quad.geometry as THREE.BufferGeometry).dispose();
-      if (composerRef.current) { composerRef.current.dispose(); composerRef.current = null; }
-      renderer.dispose();
-      renderer.forceContextLoss();
-      if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
+      ro.disconnect();
+      if ((rafRef.current as any)?.cancel) (rafRef.current as any).cancel();
     };
   }, [sensitivity, lineThickness, linesColor, scanColor, scanOpacity, gridScale, lineStyle, lineJitter, scanDirection, enablePost]);
 
