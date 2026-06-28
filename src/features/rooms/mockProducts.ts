@@ -92,11 +92,12 @@ function p(
   status: "pending" | "reserved" | "purchased",
   addedById: string,
   ownerId?: string,
-): Seed {
+): Seed & { emoji: string } {
   return {
     brand,
     name,
     category,
+    emoji,
     price,
     mrp,
     rating,
@@ -107,9 +108,9 @@ function p(
     assignedToId: ownerId,
     reservedById: status === "reserved" ? ownerId : undefined,
     purchasedById: status === "purchased" ? ownerId : undefined,
-    commentsCount: Math.floor(Math.random() * 6),
+    commentsCount: (name.length + brand.length) % 6,
     addedById,
-  } as Seed;
+  };
 }
 
 let counter = 1000;
@@ -119,7 +120,6 @@ export const products: Product[] = Object.entries(seeds).flatMap(([roomId, items
     const meta = CATEGORY_META[s.category];
     return {
       ...s,
-      emoji: s.emoji ?? meta.emoji,
       gradient: meta.gradient,
       id: `p_${counter}`,
       roomId,
@@ -127,9 +127,3 @@ export const products: Product[] = Object.entries(seeds).flatMap(([roomId, items
     } as Product;
   }),
 );
-
-// Override emoji per item (since p() sets via parameter we already pass)
-products.forEach((pr, idx) => {
-  const original = Object.values(seeds).flat()[idx];
-  if (original?.emoji) pr.emoji = original.emoji;
-});
