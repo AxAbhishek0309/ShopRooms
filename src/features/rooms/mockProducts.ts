@@ -92,7 +92,7 @@ function p(
   status: "pending" | "reserved" | "purchased",
   addedById: string,
   ownerId?: string,
-): Seed & { emoji: string } {
+): Seed {
   return {
     brand,
     name,
