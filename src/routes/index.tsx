@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { BrandMark } from "@/components/app-shell";
 import { AvatarStack } from "@/components/avatar-stack";
+import GridScan from "@/components/GridScan";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -120,8 +121,27 @@ function SiteHeader() {
 function Hero() {
   return (
     <section className="relative overflow-hidden">
-      <div className="bg-radial-fade pointer-events-none absolute inset-0" />
-      <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.18] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,black,transparent)]" />
+      {/* GridScan WebGL background */}
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <GridScan
+          sensitivity={0.55}
+          lineThickness={1}
+          linesColor="#2F293A"
+          gridScale={0.1}
+          scanColor="#FF9FFC"
+          scanOpacity={0.4}
+          bloomIntensity={0.6}
+          chromaticAberration={0.002}
+          noiseIntensity={0.01}
+          lineJitter={0.1}
+          scanGlow={0.5}
+          scanSoftness={2}
+          enableWebcam={false}
+          showPreview={false}
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
+      <div className="bg-radial-fade pointer-events-none absolute inset-0 z-[1]" />
 
       <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-20 sm:px-6 sm:pt-28 lg:px-8 lg:pb-28">
         <motion.div
@@ -190,29 +210,6 @@ function Hero() {
 function HeroPreview() {
   return (
     <div className="relative">
-      {/* Floating decoration */}
-      <div className="pointer-events-none absolute -left-10 -top-10 hidden lg:block">
-        <div className="animate-float flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-accent to-[oklch(0.55_0.22_290)] text-white shadow-elevated">
-          <ShoppingBag className="h-8 w-8" />
-        </div>
-      </div>
-      <div
-        className="pointer-events-none absolute -right-6 top-24 hidden lg:block"
-        style={{ animationDelay: "1.2s" }}
-      >
-        <div className="animate-float flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-rose-400 to-fuchsia-500 text-white shadow-elevated">
-          <Heart className="h-7 w-7" />
-        </div>
-      </div>
-      <div className="pointer-events-none absolute -bottom-6 left-1/3 hidden lg:block">
-        <div
-          className="animate-float flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-elevated"
-          style={{ animationDelay: "2.4s" }}
-        >
-          <Home className="h-6 w-6" />
-        </div>
-      </div>
-
       <div className="overflow-hidden rounded-3xl border border-border bg-surface-elevated shadow-elevated">
         <div className="flex items-center gap-1.5 border-b border-border bg-secondary/40 px-4 py-3">
           <span className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
