@@ -1,15 +1,20 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "outputDirectory": "dist/client",
   "framework": null,
-  "routes": [
+  "functions": {
+    "api/ssr.js": {
+      "includeFiles": "dist/server/**"
+    }
+  },
+  "rewrites": [
     {
-      "src": "/assets/(.*)",
-      "dest": "/client/assets/$1"
+      "source": "/assets/(.*)",
+      "destination": "/assets/$1"
     },
     {
-      "src": "/(.*)",
-      "dest": "/server/server.js"
+      "source": "/(.*)",
+      "destination": "/api/ssr"
     }
   ]
 }
