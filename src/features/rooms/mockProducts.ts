@@ -29,7 +29,7 @@ export const CATEGORY_META: Record<
   Miscellaneous: { emoji: "🎁", gradient: ["#a855f7", "#6366f1"] },
 };
 
-type Seed = Omit<Product, "id" | "roomId" | "createdAt" | "emoji" | "gradient">;
+type Seed = Omit<Product, "id" | "roomId" | "createdAt" | "gradient">;
 
 const seeds: Record<string, Seed[]> = {
   r_wedding: [
