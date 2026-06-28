@@ -317,7 +317,9 @@ function RoomView() {
           </main>
 
           {/* Right rail */}
+          {/* Right rail */}
           <RightRail
+            roomId={room.id}
             members={room.members}
             presence={presence}
             activity={activity}
@@ -335,13 +337,24 @@ function RoomView() {
   );
 }
 
+type RailTab = "overview" | "chat" | "ai" | "activity";
+
+const RAIL_TABS: { key: RailTab; label: string; icon: typeof Users }[] = [
+  { key: "overview", label: "Overview", icon: Users },
+  { key: "chat", label: "Chat", icon: MessageCircle },
+  { key: "ai", label: "Copilot", icon: Sparkles },
+  { key: "activity", label: "Activity", icon: Activity },
+];
+
 function RightRail({
+  roomId,
   members,
   presence,
   activity,
   budget,
   products,
 }: {
+  roomId: string;
   members: import("@/types").User[];
   presence: import("@/types").Presence[];
   activity: import("@/types").ActivityEvent[];
@@ -349,16 +362,61 @@ function RightRail({
   products: import("@/types").Product[];
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const [tab, setTab] = useState<RailTab>("overview");
+  const spent = products.filter((p) => p.status === "purchased").reduce((s, p) => s + p.price, 0);
+  const pending = products.filter((p) => p.status === "pending").length;
+
   return (
     <aside
       ref={scrollerRef}
-      className="hidden h-[calc(100vh-4rem)] w-80 shrink-0 overflow-y-auto border-l border-border bg-background p-4 lg:block"
+      className="hidden h-[calc(100vh-4rem)] w-[340px] shrink-0 flex-col border-l border-border bg-background lg:flex"
     >
-      <div className="space-y-4">
-        <BudgetWidget budget={budget} products={products} />
-        <MemberRail members={members} presence={presence} />
-        <ActivityFeed events={activity} />
+      <div className="flex shrink-0 items-center gap-1 border-b border-border bg-surface/40 px-2 py-2">
+        {RAIL_TABS.map((t) => {
+          const Icon = t.icon;
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium transition",
+                active
+                  ? "bg-background text-foreground shadow-soft"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {tab === "overview" && (
+          <div className="h-full space-y-4 overflow-y-auto p-4">
+            <BudgetWidget budget={budget} products={products} />
+            <MemberRail members={members} presence={presence} />
+          </div>
+        )}
+        {tab === "chat" && (
+          <div className="h-full p-3">
+            <ChatPanel roomId={roomId} />
+          </div>
+        )}
+        {tab === "ai" && (
+          <div className="h-full p-3">
+            <AIAssistant budget={budget} spent={spent} pending={pending} />
+          </div>
+        )}
+        {tab === "activity" && (
+          <div className="h-full overflow-y-auto p-4">
+            <ActivityFeed events={activity} />
+          </div>
+        )}
       </div>
     </aside>
   );
 }
+
