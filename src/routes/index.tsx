@@ -291,7 +291,7 @@ function HeroPreview() {
                 Live chat
               </p>
               <div className="mt-3 space-y-3 text-sm">
-                <ChatBubble user={users[1]} text="Lighting is locked 🎉" />
+                <ChatBubble user={users[1]} text="Lighting is locked" />
                 <ChatBubble user={users[3]} text="Add jasmine at entrance?" />
                 <ChatBubble user={users[0]} text="Approved. Move to vendor lock." />
               </div>
