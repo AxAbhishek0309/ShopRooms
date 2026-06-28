@@ -1,15 +1,18 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
+  Activity,
   ArrowLeft,
   Calendar,
   Download,
   Filter,
+  MessageCircle,
   Mic,
   Search,
   Settings,
   Share2,
   ShoppingBag,
+  Sparkles,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -17,9 +20,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AvatarStack } from "@/components/avatar-stack";
 import { ActivityFeed } from "@/components/rooms/activity-feed";
+import { AIAssistant } from "@/components/rooms/ai-assistant";
 import { BudgetWidget } from "@/components/rooms/budget-widget";
 import { CategoriesSidebar } from "@/components/rooms/categories-sidebar";
 import { CategorySection } from "@/components/rooms/category-section";
+import { ChatPanel } from "@/components/rooms/chat-panel";
 import { DuplicateWarning } from "@/components/rooms/duplicate-warning";
 import { InviteDialog } from "@/components/rooms/invite-dialog";
 import { ItemDrawer } from "@/components/rooms/item-drawer";
