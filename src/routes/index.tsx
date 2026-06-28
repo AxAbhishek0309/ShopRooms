@@ -19,11 +19,14 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { BrandMark } from "@/components/app-shell";
 import { AvatarStack } from "@/components/avatar-stack";
-import GridScan from "@/components/GridScan";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+
+// Lazy-load so three/postprocessing never execute during SSR
+const GridScan = lazy(() => import("@/components/GridScan"));
 import {
   Accordion,
   AccordionContent,
@@ -121,25 +124,27 @@ function SiteHeader() {
 function Hero() {
   return (
     <section className="relative overflow-hidden">
-      {/* GridScan WebGL background */}
+      {/* GridScan WebGL background — client only via Suspense */}
       <div className="pointer-events-none absolute inset-0 z-0">
-        <GridScan
-          sensitivity={0.55}
-          lineThickness={1}
-          linesColor="#2F293A"
-          gridScale={0.1}
-          scanColor="#FF9FFC"
-          scanOpacity={0.4}
-          bloomIntensity={0.6}
-          chromaticAberration={0.002}
-          noiseIntensity={0.01}
-          lineJitter={0.1}
-          scanGlow={0.5}
-          scanSoftness={2}
-          enableWebcam={false}
-          showPreview={false}
-          style={{ width: '100%', height: '100%' }}
-        />
+        <Suspense fallback={null}>
+          <GridScan
+            sensitivity={0.55}
+            lineThickness={1}
+            linesColor="#2F293A"
+            gridScale={0.1}
+            scanColor="#FF9FFC"
+            scanOpacity={0.4}
+            bloomIntensity={0.6}
+            chromaticAberration={0.002}
+            noiseIntensity={0.01}
+            lineJitter={0.1}
+            scanGlow={0.5}
+            scanSoftness={2}
+            enableWebcam={false}
+            showPreview={false}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </Suspense>
       </div>
       <div className="bg-radial-fade pointer-events-none absolute inset-0 z-[1]" />
 
